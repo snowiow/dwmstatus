@@ -1,0 +1,9 @@
+dwmstatuts
+--------------------
+
+My hacked dwmstatus version.
+Differences to the original:
+- CPU Usage Block
+- Memory Usage Block
+- SWAP Usage Block
+- Current WLAN SSID
