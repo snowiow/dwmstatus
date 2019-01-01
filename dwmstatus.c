@@ -1,8 +1,3 @@
-/*
- * Copy me if you can.
- * by 20h
- */
-
 #define _BSD_SOURCE
 #include <unistd.h>
 #include <stdio.h>
@@ -14,11 +9,11 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/sysinfo.h>
+#include <sys/types.h>
 
 #include <X11/Xlib.h>
 
-char *tzargentina = "America/Buenos_Aires";
-char *tzutc = "UTC";
 char *tzberlin = "Europe/Berlin";
 
 static Display *dpy;
@@ -79,17 +74,6 @@ setstatus(char *str)
 {
 	XStoreName(dpy, DefaultRootWindow(dpy), str);
 	XSync(dpy, False);
-}
-
-char *
-loadavg(void)
-{
-	double avgs[3];
-
-	if (getloadavg(avgs, 3) < 0)
-		return smprintf("");
-
-	return smprintf("%.2f %.2f %.2f", avgs[0], avgs[1], avgs[2]);
 }
 
 char *
@@ -154,8 +138,8 @@ getbattery(char *base)
 		status = '-';
 	} else if(!strncmp(co, "Charging", 8)) {
 		status = '+';
-	} else {
-		status = '?';
+	} else if (!strncmp(co, "Full", 4)) {
+        status = 'f';
 	}
 
 	if (remcap < 0 || descap < 0)
@@ -175,48 +159,76 @@ gettemperature(char *base, char *sensor)
 	return smprintf("%02.0f°C", atof(co) / 1000);
 }
 
+char *
+getcpu() {
+    float a[3];
+    FILE *fp;
+    fp = fopen("/proc/stat", "r");
+    fscanf(fp, "%*s %f %*s %f %f", &a[0], &a[1], &a[2]);
+    fclose(fp);
+
+    return smprintf("%.2f%%", (a[0] + a[1]) * 100 / (a[0] + a[1] + a[2]));
+}
+
+char *
+get_free_resources() {
+    float gigabyte = 1024 * 1024 * 1024;
+    struct sysinfo info;
+    sysinfo(&info);
+    return smprintf("MEM %.2fG | SWAP %.2fG",
+            (float)((info.totalram - info.freeram) * info.mem_unit) / gigabyte,
+            (float)((info.totalswap - info.freeswap) * info.mem_unit) / gigabyte);
+}
+
+char *
+get_ssid() {
+    char ssid[256];
+    FILE *fp = popen("iwgetid -r", "r");
+    if (!fp) {
+        return "not connected";
+    }
+	if (fgets(ssid, sizeof(ssid)-1, fp) == NULL) {
+		return "not connected";
+    }
+    ssid[strlen(ssid)-1] = '\0';
+    fclose(fp);
+    return smprintf("%s", ssid);
+}
+
 int
 main(void)
 {
 	char *status;
-	char *avgs;
+    char *cpu;
+    char *free_resources;
 	char *bat;
 	char *bat1;
-	char *tmar;
-	char *tmutc;
-	char *tmbln;
-	char *t0, *t1, *t2;
+    char *ssid;
+	char *tz;
 
 	if (!(dpy = XOpenDisplay(NULL))) {
 		fprintf(stderr, "dwmstatus: cannot open display.\n");
 		return 1;
 	}
 
-	for (;;sleep(60)) {
-		avgs = loadavg();
+	for (;;sleep(5)) {
+        cpu = getcpu();
+        free_resources = get_free_resources();
 		bat = getbattery("/sys/class/power_supply/BAT0");
 		bat1 = getbattery("/sys/class/power_supply/BAT1");
-		tmar = mktimes("%H:%M", tzargentina);
-		tmutc = mktimes("%H:%M", tzutc);
-		tmbln = mktimes("KW %W %a %d %b %H:%M %Z %Y", tzberlin);
-		t0 = gettemperature("/sys/devices/virtual/hwmon/hwmon0", "temp1_input");
-		t1 = gettemperature("/sys/devices/virtual/hwmon/hwmon2", "temp1_input");
-		t2 = gettemperature("/sys/devices/virtual/hwmon/hwmon4", "temp1_input");
+        ssid = get_ssid();
+		tz = mktimes("%d.%m.%Y %H:%M", tzberlin);
 
-		status = smprintf("T:%s|%s|%s L:%s B:%s|%s A:%s U:%s %s",
-				t0, t1, t2, avgs, bat, bat1, tmar, tmutc,
-				tmbln);
+		status = smprintf(" CPU %s | %s | BAT0 %s | BAT1 %s | %s | %s ",
+				cpu, free_resources, bat, bat1, ssid, tz);
 		setstatus(status);
 
-		free(t0);
-		free(t1);
-		free(t2);
-		free(avgs);
+        free(cpu);
+        free(free_resources);
 		free(bat);
 		free(bat1);
-		free(tmar);
-		free(tmutc);
-		free(tmbln);
+        free(ssid);
+		free(tz);
 		free(status);
 	}
 

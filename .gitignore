@@ -1,0 +1,4 @@
+*.o
+dwmstatus
+tags
+.clang_complete
