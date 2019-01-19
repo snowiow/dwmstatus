@@ -208,8 +208,11 @@ main(void)
         ssid = get_ssid();
 		tz = mktimes("%d.%m.%Y %H:%M", tzberlin);
 
-		status = smprintf(" CPU %s | %s | BAT0 %s | BAT1 %s | %s | %s ",
-				cpu, free_resources, bat, bat1, ssid, tz);
+		status = smprintf(" CPU %s | %s | BAT %s", cpu, free_resources, bat);
+        if (bat1[0] != '\0') {
+            status = smprintf("%s %s", status, bat1);
+        }
+        status = smprintf("%s | %s | %s", status, ssid, tz);
 		setstatus(status);
 
         free(cpu);
