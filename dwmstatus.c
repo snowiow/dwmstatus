@@ -101,10 +101,9 @@ char *
 getbattery(char *base)
 {
 	char *co, status;
-	int descap, remcap;
+	int capacity;
 
-	descap = -1;
-	remcap = -1;
+	capacity = -1;
 
 	co = readfile(base, "present");
 	if (co == NULL)
@@ -115,22 +114,11 @@ getbattery(char *base)
 	}
 	free(co);
 
-	co = readfile(base, "charge_full_design");
-	if (co == NULL) {
-		co = readfile(base, "energy_full_design");
-		if (co == NULL)
-			return smprintf("");
-	}
-	sscanf(co, "%d", &descap);
-	free(co);
-
-	co = readfile(base, "charge_now");
-	if (co == NULL) {
-		co = readfile(base, "energy_now");
-		if (co == NULL)
-			return smprintf("");
-	}
-	sscanf(co, "%d", &remcap);
+	co = readfile(base, "capacity");
+    if (co == NULL) {
+        return smprintf("");
+    }
+	sscanf(co, "%d", &capacity);
 	free(co);
 
 	co = readfile(base, "status");
@@ -142,10 +130,11 @@ getbattery(char *base)
         status = 'f';
 	}
 
-	if (remcap < 0 || descap < 0)
+	if (capacity < 0) {
 		return smprintf("invalid");
+    }
 
-	return smprintf("%.0f%%%c", ((float)remcap / (float)descap) * 100, status);
+	return smprintf("%d%%%c", capacity, status);
 }
 
 char *
