@@ -212,7 +212,7 @@ main(void)
         if (bat1[0] != '\0') {
             status = smprintf("%s %s", status, bat1);
         }
-        status = smprintf("%s | %s | %s", status, ssid, tz);
+        status = smprintf("%s | %s | %s ", status, ssid, tz);
 		setstatus(status);
 
         free(cpu);
